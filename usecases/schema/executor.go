@@ -3,9 +3,7 @@
 // \ \ /\ / / _ \/ _` \ \ / / |/ _` | __/ _ \
 //  \ V  V /  __/ (_| |\ V /| | (_| | ||  __/
 //   \_/\_/ \___|\__,_| \_/ |_|\__,_|\__\___|
-//
-//  Copyright © 2016 - 2024 Weaviate B.V. All rights reserved.
-//
+// //  Copyright © 2016 - 2024 Weaviate B.V. All rights reserved. //
 //  CONTACT: hello@weaviate.io
 //
 
@@ -20,6 +18,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	schemaConfig "github.com/weaviate/weaviate/entities/schema/config"
+	"golang.org/x/exp/slices"
 
 	"github.com/weaviate/weaviate/cluster/proto/api"
 	enterrors "github.com/weaviate/weaviate/entities/errors"
@@ -101,6 +100,16 @@ func (e *executor) AddClass(pl api.AddClassRequest) error {
 		return fmt.Errorf("apply add class: %w", err)
 	}
 	return nil
+}
+
+func (e *executor) AddReplicaToShard(class string, shard string, replica string) error {
+	ctx := context.Background()
+	if replicas, err := e.schemaReader.ShardReplicas(class, shard); err != nil {
+		return fmt.Errorf("error reading replicas for collection %s shard %s: %w", class, shard, err)
+	} else if !slices.Contains(replicas, replica) {
+		return fmt.Errorf("replica %s does not exists for collection %s shard %s", replica, class, shard)
+	}
+	return e.migrator.AddReplicaToShard(ctx, class, shard)
 }
 
 // RestoreClassDir restores classes on the filesystem directly from the temporary class backup stored on disk.

@@ -202,11 +202,11 @@ func (suite *ReplicaReplicationTestSuite) TestReplicaMovementHappyPath() {
 	}
 
 	t.Run(fmt.Sprintf("stop node %d", sourceNode), func(t *testing.T) {
-		common.StopNodeAt(ctx, t, compose, sourceNode+1)
+		common.StopNodeAt(ctx, t, compose, sourceNode)
 	})
 
 	// TODO: Start watch status until completion
-	// For now we sleep, remove the sleep and instead poll status
+	// For now we sleep, remove the sleep and instead poll status once API is up
 	time.Sleep(20 * time.Second)
 
 	t.Run("assert data is available for paragraph on node3 with consistency level one", func(t *testing.T) {
