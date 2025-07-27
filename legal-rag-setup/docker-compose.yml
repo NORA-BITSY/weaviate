@@ -1,0 +1,67 @@
+version: '3.4'
+services:
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      # Core Configuration
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'legal-system-key'
+      AUTHENTICATION_APIKEY_USERS: 'legal-user@firm.com'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      
+      # Modules Configuration
+      ENABLE_MODULES: 'text2vec-openai,text2vec-transformers,generative-openai,backup-s3'
+      DEFAULT_VECTORIZER_MODULE: 'text2vec-openai'
+      
+      # Performance Optimization
+      GOMAXPROCS: '8'
+      PERSISTENCE_MEMTABLES_MAX_SIZE: '500'
+      PERSISTENCE_MEMTABLES_FLUSH_IDLE_AFTER_SECONDS: '30'
+      
+      # Legal-specific
+      CLUSTER_HOSTNAME: 'legal-weaviate-node'
+      LOG_LEVEL: 'info'
+      LOG_FORMAT: 'json'
+      
+      # External API Keys
+      OPENAI_APIKEY: '${OPENAI_API_KEY}'
+      TRANSFORMERS_INFERENCE_API: 'http://t2v-transformers:8080'
+      
+      # Backup Configuration
+      BACKUP_S3_BUCKET: '${S3_BACKUP_BUCKET}'
+      AWS_ACCESS_KEY_ID: '${AWS_ACCESS_KEY_ID}'
+      AWS_SECRET_ACCESS_KEY: '${AWS_SECRET_ACCESS_KEY}'
+      AWS_REGION: '${AWS_REGION}'
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+      - ./legal-docs:/legal-docs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Local transformers for sensitive legal data
+  t2v-transformers:
+    image: semitechnologies/transformers-inference:sentence-transformers-all-MiniLM-L6-v2
+    environment:
+      ENABLE_CUDA: '0'  # Set to '1' if GPU available
+    ports:
+      - "8081:8080"
+
+  # Optional: Legal-specific embedding model
+  legal-embeddings:
+    image: semitechnologies/transformers-inference:sentence-transformers-legal-bert-base
+    environment:
+      ENABLE_CUDA: '0'
+    ports:
+      - "8082:8080"
+
+volumes:
+  weaviate_data:
